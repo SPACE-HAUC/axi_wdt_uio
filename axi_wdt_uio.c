@@ -24,8 +24,8 @@ int wdt_init(wdt_dev *dev, int uio_addr)
         return ret;
     }
     // enable the WDT
-    uio_write(dev, TWCSR0, 2);
-    uio_write(dev, TWCSR1, 1);
+    static wdt_twcsr0 reg0 = {.ewdt1 = 1};
+    uio_write(dev, TWCSR0, reg0.val);
     ret = uio_unmask_irq(dev);
     return ret;
 }
@@ -37,8 +37,8 @@ int wdt_poll(wdt_dev *dev)
 
 int wdt_kick(wdt_dev *dev)
 {
-    static wdt_esr esr = {.wrp = 1, .wint = 1};
-    uio_write(dev, ESR, esr.val);
+    static wdt_twcsr0 reg0 = {.ewdt1 = 1, .wds = 1};
+    uio_write(dev, TWCSR0, reg0.val);
     return 1;
 }
 
@@ -81,7 +81,8 @@ int main(int argc, char *argv[])
     {
         printf("Polling for WDT IRQ...\n");
         int ret = wdt_poll(&wdt);
-        wdt_kick(&wdt);
+        if (ret > 0)
+            wdt_kick(&wdt);
         printf("Received IRQ: %d\n", ret - 1);
     }
     printf("Do you want to keep WDT alive to test reset functionality? [y/N]: ");
